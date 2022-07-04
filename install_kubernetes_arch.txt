@@ -1,0 +1,71 @@
+## Install Kubernetes in ArchLinux
+
+# Pre-config
+1. Create a kubernetes user with admin rights
+useradd -m -G wheel -s /bin/bash kubernetes
+passwd kubernetes
+echo "kubernetes ALL= (ALL)ALL">> /etc/sudoers
+
+2. Update pacman repositories
+sudo pacman -Syy
+
+# Config
+
+1. Install dependencies
+sudo pacman -S devtools base-devel
+
+2. Deactivate swap mem
+sudo swapoff -a
+
+3. Install Docker
+Execute all the steps in file "install_docker.txt"
+
+4. Install kubernetes packages
+sudo vi install-kube-packages.sh
+
+#!/usr/bin/env sh
+
+OLD_PWD="${OLDPWD}"
+PACKAGE_DIR="${HOME}/kube-packages/$( date +%Y-%m-%d )"
+
+mkdir -p "${PACKAGE_DIR}"
+
+for p in kubectl-bin kubelet-bin kubeadm-bin cni-plugins-bin; do
+    cd "${PACKAGE_DIR}"
+
+    echo "> Fetching ${p} ..."
+    curl -O https://aur.archlinux.org/cgit/aur.git/snapshot/${p}.tar.gz
+    tar zxvf ${p}.tar.gz
+
+    cd "${PACKAGE_DIR}/${p}"
+    echo "> Building ${p} ..."
+    makepkg
+
+    echo "> Installing ${p} ..."
+    sudo pacman --noconfirm -U *.tar.zst
+done
+
+cd "${OLD_PWD}"
+echo "> Done"
+
+sudo chmod +x install-kube-packages.sh
+./install-kube-packages.sh
+
+5. If there is a dependencies issue, resolv that manually, for example (and run the script again)
+
+sudo pacman -S conntrack-tools
+
+6. Check the kubernetes packages versions
+kubelet --version
+kubectl version
+kubeadm version
+
+7. Install extra packages for kubeadm
+sudo pacman -S ethtool ebtables socat conntrack-tools
+
+# Bootstrapping the Kubernetes cluster
+
+1. Enable kubelet
+sudo systemctl enable kubelet
+
+2. sudo kubeadm init --pod-network-cidr=192.168.0.0/16 --control-plane-endpoint <k8s>:6443 --upload-certs
