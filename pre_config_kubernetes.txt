@@ -1,0 +1,21 @@
+## Install Kubernetes in ArchLinux
+
+# Pre-config
+1. Create a kubernetes user with admin rights
+useradd -m -G wheel -s /bin/bash kubernetes
+passwd kubernetes
+echo "kubernetes ALL= (ALL)ALL">> /etc/sudoers
+
+2. Update pacman repositories
+sudo pacman -Syy
+
+# Config
+
+1. Install dependencies
+sudo pacman -S devtools base-devel
+
+2. Deactivate swap mem
+sudo swapoff -a
+
+3. Install Docker
+Execute all the steps in file "install_docker.txt"

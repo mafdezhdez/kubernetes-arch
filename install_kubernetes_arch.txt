@@ -1,26 +1,7 @@
 ## Install Kubernetes in ArchLinux
+0. Execute all the steps from pre_config_kubernetes.txt
 
-# Pre-config
-1. Create a kubernetes user with admin rights
-useradd -m -G wheel -s /bin/bash kubernetes
-passwd kubernetes
-echo "kubernetes ALL= (ALL)ALL">> /etc/sudoers
-
-2. Update pacman repositories
-sudo pacman -Syy
-
-# Config
-
-1. Install dependencies
-sudo pacman -S devtools base-devel
-
-2. Deactivate swap mem
-sudo swapoff -a
-
-3. Install Docker
-Execute all the steps in file "install_docker.txt"
-
-4. Install kubernetes packages
+1. Install kubernetes packages
 sudo vi install-kube-packages.sh
 
 #!/usr/bin/env sh
@@ -51,11 +32,11 @@ echo "> Done"
 sudo chmod +x install-kube-packages.sh
 ./install-kube-packages.sh
 
-5. If there is a dependencies issue, resolv that manually, for example (and run the script again)
+5. If there is a dependencies issue, resolved that manually, for example (and run the script again)
 
 sudo pacman -S conntrack-tools
 
-6. Check the kubernetes packages versions
+6. Check the kubernetes packages versions - Same version in the 3 components is needed.
 kubelet --version
 kubectl version
 kubeadm version
@@ -63,9 +44,34 @@ kubeadm version
 7. Install extra packages for kubeadm
 sudo pacman -S ethtool ebtables socat conntrack-tools
 
+8. Network config needed in each node
+[kubernetes@com37 ~]$ cat /etc/hosts 
+# Static table lookup for hostnames.
+# See hosts(5) for details.
+127.0.0.1 com37 localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+
 # Bootstrapping the Kubernetes cluster
 
 1. Enable kubelet
 sudo systemctl enable kubelet
 
-2. sudo kubeadm init --pod-network-cidr=192.168.0.0/16 --control-plane-endpoint <k8s>:6443 --upload-certs
+2. Run kubadm cmd, where the <k8s> IP is the public IP from the control node.
+ sudo kubeadm init --pod-network-cidr=192.168.0.0/16 --control-plane-endpoint <k8s>:6443 --upload-certs
+
+3. Save kubernetes config
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+4. Deploy the network pod
+kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+
+## Add more nodes to the cluster
+0. Install kubernetes with the instructions from this guide until step "1.Enable kubelet"
+
+1. To add more nodes to the cluster, generate a new token with the command (run in control node)
+kubeadm token create --print-join-command
+
+2. Execute the comman in the new node
+kubeadm join 138.4.11.216:6443 --token xxxxxx --discovery-token-ca-cert-hash sha256:xxxxxxxx
